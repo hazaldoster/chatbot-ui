@@ -106,9 +106,7 @@ export const Message: FC<MessageProps> = ({
   const handleRegenerate = async () => {
     setIsGenerating(true)
     await handleSendMessage(
-      editedMessage || chatMessages[chatMessages.length - 2].message.content,
-      chatMessages,
-      true
+      editedMessage || chatMessages[chatMessages.length - 2].message.content
     )
   }
 

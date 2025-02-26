@@ -9,7 +9,7 @@ import { buildFinalMessages } from "@/lib/build-prompt"
 import { Tables } from "@/supabase/types"
 import { ChatMessage, ChatPayload, LLMID, ModelProvider } from "@/types"
 import { useRouter } from "next/navigation"
-import { useContext, useEffect, useRef } from "react"
+import { useContext, useEffect, useRef, useState, useCallback } from "react"
 import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 import {
   createTempMessages,
@@ -21,6 +21,10 @@ import {
   processResponse,
   validateChatSettings
 } from "../chat-helpers"
+import { buildCSVPrompt, processCSVMessage } from "@/lib/csv-chat-handler"
+import { parseCSV } from "@/lib/csv-parser"
+import { getEmbeddedCSVPath } from "@/lib/csv-file-reader"
+import { toast } from "sonner"
 
 export const useChatHandler = () => {
   const router = useRouter()
@@ -70,6 +74,44 @@ export const useChatHandler = () => {
   } = useContext(ChatbotUIContext)
 
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Add a state to track if CSV data is loaded
+  const [csvDataLoaded, setCsvDataLoaded] = useState(false)
+  const [csvData, setCsvData] = useState<{
+    headers: string[]
+    rows: string[][]
+  } | null>(null)
+  const [csvLoadError, setCsvLoadError] = useState<string | null>(null)
+
+  // Load embedded CSV data when component mounts
+  useEffect(() => {
+    const loadEmbeddedCSVData = async () => {
+      try {
+        const response = await fetch("/api/embedded-csv")
+
+        if (!response.ok) {
+          throw new Error(`Failed to load CSV data: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        // The API now returns the data directly, not wrapped in a csvData property
+        setCsvData(data)
+        setCsvDataLoaded(true)
+        setCsvLoadError(null)
+      } catch (error) {
+        console.error("Error loading embedded CSV data:", error)
+        setCsvLoadError(
+          error instanceof Error
+            ? error.message
+            : "Unknown error loading CSV data"
+        )
+        setCsvDataLoaded(false)
+      }
+    }
+
+    loadEmbeddedCSVData()
+  }, [])
 
   useEffect(() => {
     if (!isPromptPickerOpen || !isFilePickerOpen || !isToolPickerOpen) {
@@ -190,12 +232,41 @@ export const useChatHandler = () => {
 
   const handleSendMessage = async (
     messageContent: string,
-    chatMessages: ChatMessage[],
-    isRegeneration: boolean
+    deleteCount = 0,
+    customChatSettings = chatSettings
   ) => {
+    // Check if CSV data is loaded before proceeding
+    if (!csvDataLoaded || !csvData) {
+      if (csvLoadError) {
+        toast.error(`CSV data could not be loaded: ${csvLoadError}`)
+      } else {
+        toast.error("CSV data is still loading. Please try again in a moment.")
+      }
+      return
+    }
+
     const startingInput = messageContent
 
     try {
+      // Process the message to ensure it's valid for CSV data
+      const processResult = await processCSVMessage(messageContent, csvData)
+      if (!processResult.isValid) {
+        throw new Error(processResult.response)
+      }
+
+      // Update chat settings with CSV-specific prompt and mode
+      const csvPrompt = buildCSVPrompt(csvData)
+      setChatSettings(prev => ({
+        ...prev!,
+        prompt: csvPrompt,
+        csvMode: {
+          enabled: true,
+          fileId: getEmbeddedCSVPath(),
+          headers: csvData.headers
+        }
+      }))
+
+      // Continue with existing message handling
       setUserInput("")
       setIsGenerating(true)
       setIsPromptPickerOpen(false)
@@ -217,10 +288,10 @@ export const useChatHandler = () => {
         ...LLM_LIST,
         ...availableLocalModels,
         ...availableOpenRouterModels
-      ].find(llm => llm.modelId === chatSettings?.model)
+      ].find(llm => llm.modelId === customChatSettings?.model)
 
       validateChatSettings(
-        chatSettings,
+        customChatSettings,
         modelData,
         profile,
         selectedWorkspace,
@@ -243,7 +314,7 @@ export const useChatHandler = () => {
           userInput,
           newMessageFiles,
           chatFiles,
-          chatSettings!.embeddingsProvider,
+          customChatSettings!.embeddingsProvider,
           sourceCount
         )
       }
@@ -252,19 +323,17 @@ export const useChatHandler = () => {
         createTempMessages(
           messageContent,
           chatMessages,
-          chatSettings!,
+          customChatSettings!,
           b64Images,
-          isRegeneration,
+          false,
           setChatMessages,
           selectedAssistant
         )
 
       let payload: ChatPayload = {
-        chatSettings: chatSettings!,
+        chatSettings: customChatSettings!,
         workspaceInstructions: selectedWorkspace!.instructions || "",
-        chatMessages: isRegeneration
-          ? [...chatMessages]
-          : [...chatMessages, tempUserChatMessage],
+        chatMessages: [...chatMessages, tempUserChatMessage],
         assistant: selectedChat?.assistant_id ? selectedAssistant : null,
         messageFileItems: retrievedFileItems,
         chatFileItems: chatFileItems
@@ -297,9 +366,7 @@ export const useChatHandler = () => {
 
         generatedText = await processResponse(
           response,
-          isRegeneration
-            ? payload.chatMessages[payload.chatMessages.length - 1]
-            : tempAssistantChatMessage,
+          tempAssistantChatMessage,
           true,
           newAbortController,
           setFirstTokenReceived,
@@ -311,9 +378,9 @@ export const useChatHandler = () => {
           generatedText = await handleLocalChat(
             payload,
             profile!,
-            chatSettings!,
+            customChatSettings!,
             tempAssistantChatMessage,
-            isRegeneration,
+            false,
             newAbortController,
             setIsGenerating,
             setFirstTokenReceived,
@@ -326,7 +393,7 @@ export const useChatHandler = () => {
             profile!,
             modelData!,
             tempAssistantChatMessage,
-            isRegeneration,
+            false,
             newAbortController,
             newMessageImages,
             chatImages,
@@ -340,7 +407,7 @@ export const useChatHandler = () => {
 
       if (!currentChat) {
         currentChat = await handleCreateChat(
-          chatSettings!,
+          customChatSettings!,
           profile!,
           selectedWorkspace!,
           messageContent,
@@ -372,7 +439,7 @@ export const useChatHandler = () => {
         messageContent,
         generatedText,
         newMessageImages,
-        isRegeneration,
+        false,
         retrievedFileItems,
         setChatMessages,
         setChatFileItems,
@@ -386,6 +453,11 @@ export const useChatHandler = () => {
       setIsGenerating(false)
       setFirstTokenReceived(false)
       setUserInput(startingInput)
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error("An unexpected error occurred")
+      }
     }
   }
 
@@ -407,7 +479,7 @@ export const useChatHandler = () => {
 
     setChatMessages(filteredMessages)
 
-    handleSendMessage(editedContent, filteredMessages, false)
+    handleSendMessage(editedContent)
   }
 
   return {
@@ -417,6 +489,7 @@ export const useChatHandler = () => {
     handleSendMessage,
     handleFocusChatInput,
     handleStopMessage,
-    handleSendEdit
+    handleSendEdit,
+    csvDataLoaded
   }
 }

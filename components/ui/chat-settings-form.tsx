@@ -19,6 +19,8 @@ import {
 import { Slider } from "./slider"
 import { TextareaAutosize } from "./textarea-autosize"
 import { WithTooltip } from "./with-tooltip"
+import { cn } from "@/lib/utils"
+import { getEmbeddedCSVPath } from "@/lib/csv-file-reader"
 
 interface ChatSettingsFormProps {
   chatSettings: ChatSettings
@@ -39,6 +41,22 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
 
   return (
     <div className="space-y-3">
+      {chatSettings.csvMode?.enabled && (
+        <div className="rounded-lg border border-blue-500 bg-blue-500/10 p-3">
+          <div className="font-bold text-blue-500">BeautyBot Mode Active</div>
+          <div className="mb-1 text-sm">
+            Using embedded CSV file: {getEmbeddedCSVPath()}
+          </div>
+          <div className="text-sm">
+            Available columns: {chatSettings.csvMode.headers?.join(", ")}
+          </div>
+          <div className="mt-2 text-xs text-blue-700">
+            The beautybot will only answer questions based on this beauty
+            product data.
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1">
         <Label>Model</Label>
 
@@ -54,10 +72,15 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
         <Label>Prompt</Label>
 
         <TextareaAutosize
-          className="bg-background border-input border-2"
+          className={cn(
+            "bg-background border-input border-2",
+            chatSettings.csvMode?.enabled && "cursor-not-allowed opacity-50"
+          )}
           placeholder="You are a helpful AI assistant."
           onValueChange={prompt => {
-            onChangeChatSettings({ ...chatSettings, prompt })
+            if (!chatSettings.csvMode?.enabled) {
+              onChangeChatSettings({ ...chatSettings, prompt })
+            }
           }}
           value={chatSettings.prompt}
           minRows={3}

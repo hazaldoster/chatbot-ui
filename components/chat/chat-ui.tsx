@@ -8,6 +8,7 @@ import { getMessageFileItemsByMessageId } from "@/db/message-file-items"
 import { getMessagesByChatId } from "@/db/messages"
 import { getMessageImageFromStorage } from "@/db/storage/message-images"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { getEmbeddedCSVPath } from "@/lib/csv-file-reader"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLMID, MessageImage } from "@/types"
 import { useParams } from "next/navigation"
@@ -18,6 +19,8 @@ import { ChatInput } from "./chat-input"
 import { ChatMessages } from "./chat-messages"
 import { ChatScrollButtons } from "./chat-scroll-buttons"
 import { ChatSecondaryButtons } from "./chat-secondary-buttons"
+import { Spinner } from "../ui/spinner"
+import { Loader2 } from "lucide-react"
 
 interface ChatUIProps {}
 
@@ -41,7 +44,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     setSelectedTools
   } = useContext(ChatbotUIContext)
 
-  const { handleNewChat, handleFocusChatInput } = useChatHandler()
+  const { handleNewChat, handleFocusChatInput, csvDataLoaded } =
+    useChatHandler()
 
   const {
     messagesStartRef,
@@ -181,6 +185,24 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     })
   }
 
+  if (!csvDataLoaded) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center p-8">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <Loader2 className="text-muted-foreground size-8 animate-spin" />
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold">Loading BeautyBot</h3>
+            <p className="text-muted-foreground text-sm">
+              Loading beauty product data from embedded CSV file...
+              <br />
+              {getEmbeddedCSVPath()}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return <Loading />
   }
@@ -202,8 +224,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       </div>
 
       <div className="bg-secondary flex max-h-[50px] min-h-[50px] w-full items-center justify-center border-b-2 font-bold">
-        <div className="max-w-[200px] truncate sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[700px]">
-          {selectedChat?.name || "Chat"}
+        <div className="flex max-w-[200px] items-center truncate sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[700px]">
+          <span>{selectedChat?.name || "Chat"}</span>
+          <span className="ml-2 rounded-full bg-blue-500/20 px-2 py-0.5 text-xs text-blue-600">
+            BeautyBot
+          </span>
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import { LLMID } from "./llms"
+
 export * from "./announcement"
 export * from "./assistant-retrieval-item"
 export * from "./chat"
@@ -13,3 +15,18 @@ export * from "./llms"
 export * from "./models"
 export * from "./sharing"
 export * from "./sidebar-data"
+
+export interface ChatSettings {
+  model: LLMID
+  prompt: string
+  temperature: number
+  contextLength: number
+  includeProfileContext: boolean
+  includeWorkspaceInstructions: boolean
+  embeddingsProvider: "openai" | "local"
+  csvMode?: {
+    enabled: boolean
+    fileId?: string
+    headers?: string[]
+  }
+}
