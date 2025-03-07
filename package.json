@@ -23,6 +23,9 @@
     "db-types": "supabase gen types typescript --local > supabase/types.ts",
     "db-pull": "supabase db remote commit",
     "db-push": "supabase db push",
+    "import-csv": "node scripts/import-csv.js",
+    "check-beauty-products": "node scripts/check-beauty-products.js",
+    "setup-beauty-products": "node scripts/setup-beauty-products.js",
     "test": "jest"
   },
   "dependencies": {
@@ -71,6 +74,7 @@
     "cmdk": "^0.2.0",
     "d3-dsv": "^2.0.0",
     "date-fns": "^2.30.0",
+    "dotenv": "^16.4.7",
     "endent": "^2.1.0",
     "gpt-tokenizer": "^2.1.2",
     "i18next": "^23.7.16",

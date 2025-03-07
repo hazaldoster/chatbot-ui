@@ -255,6 +255,54 @@ export type Database = {
           },
         ]
       }
+      beauty_products: {
+        Row: {
+          color: string | null
+          comments: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          price: string | null
+          product_id: string | null
+          rating: string | null
+          rating_score: number | null
+          subcategory: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          color?: string | null
+          comments?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          price?: string | null
+          product_id?: string | null
+          rating?: string | null
+          rating_score?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          color?: string | null
+          comments?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          price?: string | null
+          product_id?: string | null
+          rating?: string | null
+          rating_score?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
       chat_files: {
         Row: {
           chat_id: string
@@ -1320,6 +1368,36 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
+      gtrgm_compress: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: {
+          "": unknown
+        }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
       match_file_items_local: {
         Args: {
           query_embedding: string
@@ -1365,6 +1443,22 @@ export type Database = {
           p_name: string
         }
         Returns: boolean
+      }
+      set_limit: {
+        Args: {
+          "": number
+        }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: {
+          "": string
+        }
+        Returns: string[]
       }
     }
     Enums: {

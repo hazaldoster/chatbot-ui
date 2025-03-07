@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
-import { promises as fs } from "fs"
-import { getEmbeddedCSVPath } from "@/lib/csv-file-reader"
-import { parseCSV } from "@/lib/csv-parser"
 import { isServer } from "@/lib/is-server"
 import { getMockCSVData } from "@/lib/mock-csv-data"
+import { fetchBeautyProducts } from "@/lib/supabase-beauty-products"
 
 export async function GET() {
   // Ensure this API is only called from the server
@@ -15,32 +13,21 @@ export async function GET() {
   }
 
   try {
-    const csvPath = getEmbeddedCSVPath()
+    // Fetch beauty products from Supabase
+    const parsedData = await fetchBeautyProducts()
 
-    // Check if file exists
-    try {
-      await fs.access(csvPath)
-    } catch (error) {
-      console.warn(`CSV file not found at ${csvPath}, using mock data instead`)
-      // Return mock data if file doesn't exist
+    // If no data is found, return mock data
+    if (!parsedData.headers.length || !parsedData.rows.length) {
+      console.warn(
+        "No beauty products found in Supabase, using mock data instead"
+      )
       return NextResponse.json(getMockCSVData())
     }
 
-    // Read and parse the CSV file
-    try {
-      const csvContent = await fs.readFile(csvPath, "utf-8")
-      const parsedData = parseCSV(csvContent)
-      return NextResponse.json(parsedData)
-    } catch (error) {
-      console.error("Error reading CSV file:", error)
-      console.warn("Using mock data instead due to read error")
-      return NextResponse.json(getMockCSVData())
-    }
+    return NextResponse.json(parsedData)
   } catch (error) {
-    console.error("Unexpected error in embedded-csv API:", error)
-    return NextResponse.json(
-      { error: "Failed to process CSV data" },
-      { status: 500 }
-    )
+    console.error("Error fetching beauty products from Supabase:", error)
+    console.warn("Using mock data instead due to fetch error")
+    return NextResponse.json(getMockCSVData())
   }
 }
